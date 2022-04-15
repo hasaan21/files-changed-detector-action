@@ -1,5 +1,6 @@
 name: 'PR files changed detector Action'
 description: 'Adds pull request file changes as a comment to a newly opened PR'
+
 inputs:
   owner:
     description: 'The owner of the repository'
@@ -13,6 +14,7 @@ inputs:
   token:
     description: 'The token to use to access the GitHub API'
     required: true
+
 runs:
   using: 'node16'
   main: 'index.js'
