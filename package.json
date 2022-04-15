@@ -4,13 +4,18 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "ncc build index.js",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Hasaan",
   "license": "ISC",
   "dependencies": {
     "@actions/core": "^1.6.0",
     "@actions/github": "^5.0.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.33.4"
   }
 }
