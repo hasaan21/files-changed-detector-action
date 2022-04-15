@@ -1,0 +1,17 @@
+name: PR files changed detector
+
+on: [pull_request]
+
+jobs:
+
+  annotate-pr:
+    runs-on: ubuntu-latest
+    name: PR files changed detector
+    steps:
+      - name: Annotate PR
+        uses: link-/files-changed-detector-action@master
+        with:
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          pr_number: ${{ github.event.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
