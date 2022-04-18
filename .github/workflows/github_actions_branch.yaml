@@ -1,17 +1,43 @@
-name: PR files changed detector
+name: PR files changed detector branch
 
 on: [pull_request]
 
 jobs:
-
-  annotate-pr:
-    runs-on: ubuntu-latest
-    name: PR files changed detector
+  build:
+    runs-on: ubuntu-20.04
     steps:
-      - name: Annotate PR
-        uses: hasaan21/files-changed-detector-action@v1
+      - uses: actions/checkout@v2
+      - name: Create tag
+        uses: actions/github-script@v4
         with:
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          pr_number: ${{ github.event.number }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const version = fs.readFileSync('./.version').toString().trim();
+
+            const responseTags = await github.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            })
+
+            const tags = responseTags.data.map(tag => tag.name);
+            const existingTags = tags.filter(tag => tag == version);
+
+            if (existingTags.length) {
+              core.setFailed(`Tag ${version} already exists. Ensure you increment the version within the .version file`);
+              return;
+            }
+
+            const alphaVersion = `${version}-alpha.${context.issue.number}.`;
+            const usedAlphaNumbers = tags.filter(tag => tag.startsWith(alphaVersion)).map(tag => parseInt(tag.replace(alphaVersion, ''), 10)).sort();
+            const newVersion = usedAlphaNumbers.length ? (usedAlphaNumbers[usedAlphaNumbers.length - 1] + 1) : 1;
+
+            const response = await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${alphaVersion}${newVersion}`,
+              sha: context.sha
+            })
+
+            console.log(`Created tag: ${alphaVersion}${newVersion}`);

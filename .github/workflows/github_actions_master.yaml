@@ -1,0 +1,105 @@
+name: PR files changed detector master
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create tag and clean up alpha tags
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs');
+
+            const version = fs.readFileSync('./.version').toString().trim();
+
+            const mergedPullRequestsResponse = await github.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              direction: 'desc',
+              state: 'closed',
+              per_page: 20,
+            });
+
+            const mergedPullRequest = mergedPullRequestsResponse.data.find(pr => pr.merge_commit_sha == context.sha);
+
+            if (!mergedPullRequest) {
+              core.setFailed('Pull request does not exist');
+              return;
+            }
+
+            const responseTags = await github.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            })
+
+            const tags = responseTags.data.map(tag => tag.name);
+
+            const alphaVersion = `${version}-alpha.${mergedPullRequest.number}.`;
+            const alphaTagsToBeDeleted = tags.filter(tag => tag.startsWith(alphaVersion));
+
+            for (const tag of alphaTagsToBeDeleted) {
+              console.log(`Try to delete tag: ${tag}`);
+
+              await github.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`
+              })
+
+              console.log(`Deleted tag: ${tag}`);
+            }
+
+            await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${version}`,
+              sha: context.sha
+            });
+
+            const versions = version.split('.');
+            const majorVersion = versions[0];
+
+            const majorTag = tags.find(tag => tag == majorVersion);
+
+            if (majorTag) {
+              await github.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${majorTag}`,
+              })
+            }
+
+            await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${majorVersion}`,
+              sha: context.sha,
+            });
+
+            const majorMinorVersion = `${versions[0]}.${versions[1]}`;
+            const majorMinorTag = tags.find(tag => tag == majorMinorVersion);
+
+            if (majorMinorTag) {
+              await github.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${majorMinorVersion}`,
+              })
+            }
+
+            await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${majorMinorVersion}`,
+              sha: context.sha,
+            });
+
+            console.log(`Created tag: ${version}`);
+            console.log(`Created tag: ${majorVersion}`);
+            console.log(`Created tag: ${majorMinorVersion}`);
