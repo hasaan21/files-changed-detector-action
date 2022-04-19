@@ -17,6 +17,8 @@ const main = async () => {
       pull_number: pr_number,
     })
 
+    core.info(changedFiles)
+
     let message = `Pull Request #${pr_number} has been updated with: \n`
     for (const file of changedFiles) {
       message =+ `- ${file.filename}`
